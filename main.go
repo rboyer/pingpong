@@ -242,7 +242,7 @@ func (d *Daemon) handlePong(w http.ResponseWriter, r *http.Request) {
 	// TODO
 	d.AddPong(Ping{Addr: r.RemoteAddr, Value: string(b)})
 
-	w.Write([]byte("OK"))
+	_, _ = w.Write([]byte("OK"))
 }
 
 func supplyEnv(m map[string]interface{}) error {
