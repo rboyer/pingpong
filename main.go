@@ -33,6 +33,7 @@ func main() {
 	d := &Daemon{BindAddr: *bind, DialAddr: *dial}
 	http.HandleFunc("/", d.handleIndex)
 	http.HandleFunc("/pong", d.handlePong)
+	http.HandleFunc("/healthz", d.handleHealthz)
 
 	if *dial != "" {
 		if !isValidAddr(*dial) {
@@ -225,6 +226,15 @@ func (d *Daemon) handleIndex(w http.ResponseWriter, r *http.Request) {
 		log.Printf("ERROR: %v", err)
 	}
 }
+func (d *Daemon) handleHealthz(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		errNotAllowed(w)
+		return
+	}
+
+	w.Header().Set("content-type", "text/plain")
+	_, _ = w.Write([]byte("OK"))
+}
 
 func (d *Daemon) handlePong(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
@@ -242,6 +252,7 @@ func (d *Daemon) handlePong(w http.ResponseWriter, r *http.Request) {
 	// TODO
 	d.AddPong(Ping{Addr: r.RemoteAddr, Value: string(b)})
 
+	w.Header().Set("content-type", "text/plain")
 	_, _ = w.Write([]byte("OK"))
 }
 
