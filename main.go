@@ -18,9 +18,10 @@ import (
 )
 
 var (
-	bind     = flag.String("bind", ":8080", "required: address to bind (host:port or :port)")
-	dial     = flag.String("dial", "", "optional: address to ping (host:port or :port)")
-	dialFreq = flag.Duration("dialfreq", 5*time.Second, "period between pings")
+	bind       = flag.String("bind", ":8080", "required: address to bind (host:port or :port)")
+	dial       = flag.String("dial", "", "optional: address to ping (host:port or :port)")
+	dialFreq   = flag.Duration("dialfreq", 5*time.Second, "period between pings")
+	dumpToLogs = flag.Bool("dump-to-logs", false, "dump ping data to logs")
 )
 
 func main() {
@@ -145,6 +146,15 @@ type Daemon struct {
 const maxPxngs = 100
 
 func (d *Daemon) AddPing(p Ping) {
+	if *dumpToLogs {
+		defer func() {
+			out, err := json.Marshal(p)
+			if err != nil {
+				out = []byte("ERROR: " + err.Error())
+			}
+			log.Printf("PING: %s", string(out))
+		}()
+	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -156,6 +166,15 @@ func (d *Daemon) AddPing(p Ping) {
 	}
 }
 func (d *Daemon) AddPong(p Ping) {
+	if *dumpToLogs {
+		defer func() {
+			out, err := json.Marshal(p)
+			if err != nil {
+				out = []byte("ERROR: " + err.Error())
+			}
+			log.Printf("PONG: %s", string(out))
+		}()
+	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
