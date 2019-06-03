@@ -219,34 +219,51 @@ func (d *Daemon) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 	justPxngs := "1" == r.URL.Query().Get("p")
 
-	m := make(map[string]interface{})
-	m["name"] = *name
+	out := IndexData{
+		Name: *name,
+	}
 
 	if !justPxngs {
 		// proc environment vars
-		if err := supplyEnv(m); err != nil {
+		if err := supplyEnv(&out); err != nil {
 			errDone(w, err)
 			return
 		}
 
 		// http header
-		if err := supplyHTTP(m, r); err != nil {
+		if err := supplyHTTP(&out, r); err != nil {
 			errDone(w, err)
 			return
 		}
 	}
 
 	// pings
-	m["pings"] = d.GetPings()
-	m["pongs"] = d.GetPongs()
+	out.Pings = d.GetPings()
+	out.Pongs = d.GetPongs()
 
 	enc := json.NewEncoder(w)
 
 	w.Header().Set("content-type", "application/json")
-	if err := enc.Encode(m); err != nil {
+	if err := enc.Encode(&out); err != nil {
 		log.Printf("ERROR: %v", err)
 	}
 }
+
+type IndexData struct {
+	Name    string            `json:"name"`
+	Env     []string          `json:"env"`
+	Request *IndexDataRequest `json:"request"`
+	Pings   []Ping            `json:"pings"`
+	Pongs   []Ping            `json:"pongs"`
+}
+type IndexDataRequest struct {
+	Method  string   `json:"method,omitempty"`
+	URI     string   `json:"uri,omitempty"`
+	Proto   string   `json:"proto,omitempty"`
+	Host    string   `json:"host,omitempty"`
+	Headers []string `json:"headers,omitempty"`
+}
+
 func (d *Daemon) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		errNotAllowed(w)
@@ -277,14 +294,22 @@ func (d *Daemon) handlePong(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte("OK"))
 }
 
-func supplyEnv(m map[string]interface{}) error {
+func supplyEnv(out *IndexData) error {
 	env := os.Environ()
 	sort.Strings(env)
-	m["env"] = env
+
+	out.Env = env
 	return nil
 }
 
-func supplyHTTP(m map[string]interface{}, r *http.Request) error {
+func supplyHTTP(out *IndexData, r *http.Request) error {
+	out.Request = &IndexDataRequest{
+		Method: r.Method,
+		URI:    r.URL.String(),
+		Proto:  r.Proto,
+		Host:   r.Host,
+	}
+
 	var hdr []string
 	for k, vl := range r.Header {
 		for _, v := range vl {
@@ -292,7 +317,8 @@ func supplyHTTP(m map[string]interface{}, r *http.Request) error {
 		}
 	}
 	sort.Strings(hdr)
-	m["hdr"] = hdr
+	out.Request.Headers = hdr
+
 	return nil
 }
 
