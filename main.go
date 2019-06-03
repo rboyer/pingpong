@@ -22,6 +22,7 @@ var (
 	dial       = flag.String("dial", "", "optional: address to ping (host:port or :port)")
 	dialFreq   = flag.Duration("dialfreq", 5*time.Second, "period between pings")
 	dumpToLogs = flag.Bool("dump-to-logs", false, "dump ping data to logs")
+	name       = flag.String("name", "pingpong", "name to send with ping")
 )
 
 func main() {
@@ -78,7 +79,7 @@ func (d *Daemon) pingOnce() {
 		return
 	}
 
-	v := hex.EncodeToString(b)
+	v := *name + "--" + hex.EncodeToString(b)
 
 	p := Ping{Value: v}
 	defer func() {
@@ -219,6 +220,7 @@ func (d *Daemon) handleIndex(w http.ResponseWriter, r *http.Request) {
 	justPxngs := "1" == r.URL.Query().Get("p")
 
 	m := make(map[string]interface{})
+	m["name"] = *name
 
 	if !justPxngs {
 		// proc environment vars
