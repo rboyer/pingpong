@@ -9,6 +9,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"sort"
 	"strconv"
@@ -44,6 +46,13 @@ func main() {
 		if *dialFreq <= 0 {
 			log.Fatal("invalid -dialfreq value")
 		}
+
+		proxyURL, err := url.Parse("http://" + *dial + "/")
+		if err != nil {
+			log.Fatalf("bad dial url: %v", err)
+		}
+		d.Proxy = httputil.NewSingleHostReverseProxy(proxyURL)
+
 		d.Client = &http.Client{
 			Transport: &http.Transport{
 				DialContext: (&net.Dialer{
@@ -56,6 +65,7 @@ func main() {
 				ExpectContinueTimeout: 1 * time.Second,
 			},
 		}
+
 		go func() {
 			for {
 				<-time.After(*dialFreq)
@@ -137,6 +147,7 @@ type Daemon struct {
 	BindAddr string
 	DialAddr string
 
+	Proxy  *httputil.ReverseProxy
 	Client *http.Client
 
 	mu    sync.Mutex
@@ -215,6 +226,13 @@ func (d *Daemon) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		errNotAllowed(w)
 		return
+	}
+
+	if r.URL.Query().Get("proxy") == "1" {
+		if d.Proxy != nil {
+			d.Proxy.ServeHTTP(w, r)
+			return
+		}
 	}
 
 	justPxngs := "1" == r.URL.Query().Get("p")
