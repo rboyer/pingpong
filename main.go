@@ -230,6 +230,10 @@ func (d *Daemon) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 	if r.URL.Query().Get("proxy") == "1" {
 		if d.Proxy != nil {
+			// Avoid infinite recursion.
+			q := r.URL.Query()
+			q.Del("proxy")
+			r.URL.RawQuery = q.Encode()
 			d.Proxy.ServeHTTP(w, r)
 			return
 		}
