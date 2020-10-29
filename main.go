@@ -20,11 +20,12 @@ import (
 )
 
 var (
-	bind       = flag.String("bind", ":8080", "required: address to bind (host:port or :port)")
-	dial       = flag.String("dial", "", "optional: address to ping (host:port or :port)")
-	dialFreq   = flag.Duration("dialfreq", 5*time.Second, "period between pings")
-	dumpToLogs = flag.Bool("dump-to-logs", false, "dump ping data to logs")
-	name       = flag.String("name", "pingpong", "name to send with ping")
+	bind        = flag.String("bind", ":8080", "required: address to bind (host:port or :port)")
+	dial        = flag.String("dial", "", "optional: address to ping (host:port or :port)")
+	dialFreq    = flag.Duration("dialfreq", 5*time.Second, "period between pings")
+	dumpToLogs  = flag.Bool("dump-to-logs", false, "dump ping data to logs")
+	name        = flag.String("name", "pingpong", "name to send with ping")
+	logRequests = flag.Bool("log-requests", true, "log requests to some endpoints to stdout")
 )
 
 func main() {
@@ -222,7 +223,26 @@ type Ping struct {
 	Err   string `json:"err,omitempty"`
 }
 
+type reqInfo struct {
+	Method string
+	URL    string
+	Header http.Header
+}
+
 func (d *Daemon) handleIndex(w http.ResponseWriter, r *http.Request) {
+	if *logRequests {
+		ri := reqInfo{
+			Method: r.Method,
+			URL:    r.URL.String(),
+			Header: r.Header,
+		}
+		jd, err := json.MarshalIndent(ri, "", "  ")
+		if err != nil {
+			log.Printf("ERROR: could not generate request log: %v", err)
+		} else {
+			log.Printf("<Request>\n%s\n</Request>", string(jd))
+		}
+	}
 	if r.Method != "GET" {
 		errNotAllowed(w)
 		return
