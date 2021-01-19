@@ -1,12 +1,14 @@
 package main
 
 import (
-	"crypto/rand"
+	crand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -17,16 +19,23 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/sean-/seed"
 )
 
 var (
 	bind        = flag.String("bind", ":8080", "required: address to bind (host:port or :port)")
 	dial        = flag.String("dial", "", "optional: address to ping (host:port or :port)")
 	dialFreq    = flag.Duration("dialfreq", 5*time.Second, "period between pings")
+	pongChaos   = flag.Bool("pong-chaos", false, "do chaotic things as a server")
 	dumpToLogs  = flag.Bool("dump-to-logs", false, "dump ping data to logs")
 	name        = flag.String("name", "pingpong", "name to send with ping")
 	logRequests = flag.Bool("log-requests", true, "log requests to some endpoints to stdout")
 )
+
+func init() {
+	seed.MustInit()
+}
 
 func main() {
 	flag.Parse()
@@ -85,7 +94,7 @@ func main() {
 
 func (d *Daemon) pingOnce() {
 	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
+	if _, err := crand.Read(b); err != nil {
 		log.Printf("WARN: ping: problem with random generation: %v", err)
 		return
 	}
@@ -221,6 +230,7 @@ type Ping struct {
 	Addr  string `json:"addr,omitempty"`
 	Value string `json:"value,omitempty"`
 	Err   string `json:"err,omitempty"`
+	Chaos bool   `json:"chaos,omitempty"`
 }
 
 type reqInfo struct {
@@ -330,10 +340,47 @@ func (d *Daemon) handlePong(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO
-	d.AddPong(Ping{Addr: r.RemoteAddr, Value: string(b)})
+	d.AddPong(Ping{
+		Addr:  r.RemoteAddr,
+		Value: string(b),
+		Chaos: *pongChaos,
+	})
 
+	if *pongChaos {
+		// 10% of the time should do chaos
+		if rand.Intn(10) == 0 {
+			switch rand.Intn(3) {
+			case 0:
+				time.Sleep(500 * time.Millisecond)
+				w.Header().Set("content-type", "text/plain")
+				_, _ = w.Write([]byte("OK"))
+
+			case 1:
+				time.Sleep(50 * time.Millisecond)
+				w.WriteHeader(http.StatusInternalServerError)
+
+			case 2:
+				// hang up tcp
+				h, ok := w.(http.Hijacker)
+				if !ok {
+					errDone(w, errors.New("cannot hijack pong request"))
+					return
+				}
+
+				conn, _, err := h.Hijack()
+				if err != nil {
+					errDone(w, err)
+					return
+				}
+
+				conn.Close()
+			}
+		}
+		// fallthrough
+	}
 	w.Header().Set("content-type", "text/plain")
 	_, _ = w.Write([]byte("OK"))
+	return
 }
 
 func supplyEnv(out *IndexData) error {
