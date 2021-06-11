@@ -101,8 +101,10 @@ func (d *Daemon) pingOnce() {
 
 	v := *name + "--" + hex.EncodeToString(b)
 
-	p := Ping{Value: v}
+	p := Ping{Value: v, Start: time.Now()}
 	defer func() {
+		p.End = time.Now()
+		p.DurSec = int(p.End.Sub(p.Start) / time.Second)
 		d.AddPing(p)
 	}()
 
@@ -227,10 +229,13 @@ func (d *Daemon) GetPongs() []Ping {
 }
 
 type Ping struct {
-	Addr  string `json:"addr,omitempty"`
-	Value string `json:"value,omitempty"`
-	Err   string `json:"err,omitempty"`
-	Chaos bool   `json:"chaos,omitempty"`
+	Addr   string `json:"addr,omitempty"`
+	Value  string `json:"value,omitempty"`
+	Err    string `json:"err,omitempty"`
+	Chaos  bool   `json:"chaos,omitempty"`
+	Start  time.Time
+	End    time.Time
+	DurSec int
 }
 
 type reqInfo struct {
