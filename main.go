@@ -215,7 +215,10 @@ func (d *Daemon) GetPings() []Ping {
 	defer d.mu.Unlock()
 
 	out := make([]Ping, len(d.pings))
-	copy(out, d.pings)
+	for i := 0; i < len(d.pings); i++ {
+		out[len(out)-1-i] = d.pings[i]
+	}
+	// copy(out, d.pings)
 	return out
 }
 
@@ -224,7 +227,10 @@ func (d *Daemon) GetPongs() []Ping {
 	defer d.mu.Unlock()
 
 	out := make([]Ping, len(d.pongs))
-	copy(out, d.pongs)
+	for i := 0; i < len(d.pongs); i++ {
+		out[len(out)-1-i] = d.pongs[i]
+	}
+	// copy(out, d.pongs)
 	return out
 }
 
