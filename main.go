@@ -92,6 +92,11 @@ func main() {
 	os.Exit(0)
 }
 
+func now() *time.Time {
+	t := time.Now()
+	return &t
+}
+
 func (d *Daemon) pingOnce() {
 	b := make([]byte, 16)
 	if _, err := crand.Read(b); err != nil {
@@ -101,10 +106,10 @@ func (d *Daemon) pingOnce() {
 
 	v := *name + "--" + hex.EncodeToString(b)
 
-	p := Ping{Value: v, Start: time.Now()}
+	p := Ping{Value: v, Start: now()}
 	defer func() {
-		p.End = time.Now()
-		p.DurSec = int(p.End.Sub(p.Start) / time.Second)
+		p.End = now()
+		p.DurSec = int(p.End.Sub(*p.Start) / time.Second)
 		d.AddPing(p)
 	}()
 
@@ -235,13 +240,13 @@ func (d *Daemon) GetPongs() []Ping {
 }
 
 type Ping struct {
-	Addr   string `json:"addr,omitempty"`
-	Value  string `json:"value,omitempty"`
-	Err    string `json:"err,omitempty"`
-	Chaos  bool   `json:"chaos,omitempty"`
-	Start  time.Time
-	End    time.Time
-	DurSec int
+	Addr   string     `json:",omitempty"`
+	Value  string     `json:",omitempty"`
+	Err    string     `json:",omitempty"`
+	Chaos  bool       `json:",omitempty"`
+	Start  *time.Time `json:",omitempty"`
+	End    *time.Time `json:",omitempty"`
+	DurSec int        `json:",omitempty"`
 }
 
 type reqInfo struct {
