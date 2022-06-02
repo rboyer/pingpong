@@ -243,7 +243,7 @@ type Ping struct {
 	Addr   string     `json:",omitempty"`
 	Value  string     `json:",omitempty"`
 	Err    string     `json:",omitempty"`
-	Chaos  bool       `json:",omitempty"`
+	Recv   *time.Time `json:",omitempty"`
 	Start  *time.Time `json:",omitempty"`
 	End    *time.Time `json:",omitempty"`
 	DurSec int        `json:",omitempty"`
@@ -359,7 +359,7 @@ func (d *Daemon) handlePong(w http.ResponseWriter, r *http.Request) {
 	d.AddPong(Ping{
 		Addr:  r.RemoteAddr,
 		Value: string(b),
-		Chaos: *pongChaos,
+		Recv:  now(),
 	})
 
 	if *pongChaos {
