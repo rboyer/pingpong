@@ -365,7 +365,7 @@ func (d *Daemon) handlePong(w http.ResponseWriter, r *http.Request) {
 	if *pongChaos {
 		// 10% of the time should do chaos
 		if rand.Intn(10) == 0 {
-			switch rand.Intn(3) {
+			switch rand.Intn(5) {
 			case 0:
 				time.Sleep(500 * time.Millisecond)
 				w.Header().Set("content-type", "text/plain")
@@ -376,6 +376,14 @@ func (d *Daemon) handlePong(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 
 			case 2:
+				time.Sleep(50 * time.Millisecond)
+				w.WriteHeader(http.StatusServiceUnavailable)
+
+			case 3:
+				time.Sleep(50 * time.Millisecond)
+				w.WriteHeader(http.StatusNotFound)
+
+			case 4:
 				// hang up tcp
 				h, ok := w.(http.Hijacker)
 				if !ok {
