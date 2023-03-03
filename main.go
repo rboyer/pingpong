@@ -19,8 +19,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/sean-/seed"
 )
 
 var (
@@ -32,10 +30,6 @@ var (
 	name        = flag.String("name", "pingpong", "name to send with ping")
 	logRequests = flag.Bool("log-requests", true, "log requests to some endpoints to stdout")
 )
-
-func init() {
-	seed.MustInit()
-}
 
 func main() {
 	flag.Parse()
