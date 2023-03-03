@@ -42,6 +42,7 @@ func main() {
 	http.HandleFunc("/", d.handleIndex)
 	http.HandleFunc("/pong", d.handlePong)
 	http.HandleFunc("/healthz", d.handleHealthz)
+	http.HandleFunc("/pinghealthz", d.handlePingHealthz)
 
 	if *dial != "" {
 		if !isValidAddr(*dial) {
@@ -167,6 +168,19 @@ type Daemon struct {
 }
 
 const maxPxngs = 100
+
+func (d *Daemon) GetLastPing() (Ping, bool) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if len(d.pings) == 0 {
+		return Ping{}, false
+	}
+
+	last := d.pings[len(d.pings)-1]
+
+	return last, true
+}
 
 func (d *Daemon) AddPing(p Ping) {
 	if *dumpToLogs {
@@ -329,6 +343,23 @@ type IndexDataRequest struct {
 func (d *Daemon) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		errNotAllowed(w)
+		return
+	}
+
+	w.Header().Set("content-type", "text/plain")
+	_, _ = w.Write([]byte("OK"))
+}
+
+func (d *Daemon) handlePingHealthz(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		errNotAllowed(w)
+		return
+	}
+
+	last, ok := d.GetLastPing()
+	if ok && last.Err != "" {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(last.Err))
 		return
 	}
 
